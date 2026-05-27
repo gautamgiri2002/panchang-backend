@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
+
 const app = express();
 
 app.use(cors());
@@ -16,7 +19,7 @@ app.get("/panchang", async (req, res) => {
     const clientId = process.env.PROKERALA_CLIENT_ID;
     const clientSecret = process.env.PROKERALA_CLIENT_SECRET;
 
-    // STEP 1: Access Token
+    // Get Access Token
     const tokenResponse = await fetch(
       "https://api.prokerala.com/token",
       {
@@ -34,7 +37,45 @@ app.get("/panchang", async (req, res) => {
 
     const tokenData = await tokenResponse.json();
 
+    if (!tokenData.access_token) {
+      return res.status(500).json({
+        error: "Failed to get access token",
+        details: tokenData
+      });
+    }
+
     const accessToken = tokenData.access_token;
+
+    // Panchang API
+    const today = new Date().toISOString().split("T")[0];
+
+    const apiResponse = await fetch(
+      `https://api.prokerala.com/v2/astrology/panchang?datetime=${today}T06:00:00+05:30&coordinates=26.1522,85.8971`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const data = await apiResponse.json();
+
+    res.json(data);
+
+  } catch (error) {
+
+    res.status(500).json({
+      error: error.message
+    });
+
+  }
+});
+
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});    const accessToken = tokenData.access_token;
 
     // STEP 2: Panchang API
     const today = new Date().toISOString().split("T")[0];
